@@ -6,26 +6,16 @@ import json
 #Holders for target data
 pixels = [(0,0), (0,0), (0,0), (0,0)]
 
-
-# Values to use in target distance calculation
-Ta = 12 #Actual target width in inches
-Fd = 65.0  #Camera View in degrees. JeVois = 65.0, Lifecam HD-300 = 68.5, Cinema = 73.5
-
 ##Threshold values for Trackbars, These are pulled from the CalFile
 CalFile = open ('Calibration').read().split(",")
-uh = int(CalFile[0])
-lh = int(CalFile[1])
-us = int(CalFile[2])
-ls = int(CalFile[3])
-uv = int(CalFile[4])
-lv = int(CalFile[5])
-er = int(CalFile[6])
-dl = int(CalFile[7])
-ap = int(CalFile[8])
-ar = int(CalFile[9])
-sl = float(CalFile[10])
 
-#CalFile.close()#Close calibration file
+errode = int(CalFile[0])
+dilate = int(CalFile[1])
+approx = int(CalFile[2])
+area = int(CalFile[3])
+solidity = float(CalFile[4])
+ratio = float(CalFile[5])
+
 
 class EagleTracker:
     # ###################################################################################################
@@ -44,18 +34,18 @@ class EagleTracker:
         
         # Start measuring image processing time (NOTE: does not account for input conversion time):
         self.timer.start()
-        #Convert the image from BGR(RGB) to HSV
-        hsvImage = cv2.cvtColor( inimg, cv2.COLOR_BGR2HSV)
-        
-        ## Threshold HSV Image to find specific color
-        binImage = cv2.inRange(hsvImage, (lh, ls, lv), (uh, us, uv))
+
+        ## Split into red, green, and blue, subtract red from the green
+        b,g,r=cv2.split(inimg)
+        binImage=g-r
+        #Otsu's is a dynamic threshold that does a good job of isolating. Not as fast as fixed
+        ret3,binImage = cv2.threshold(binImage,0,255,cv2.THRESH_OTSU)
         
         # Erode image to remove noise if necessary.
-        binImage = cv2.erode(binImage, None, iterations = er)
+        binImage = cv2.erode(binImage, None, iterations = errode)
         #Dilate image to fill in gaps
-        binImage = cv2.dilate(binImage, None, iterations = dl)
+        binImage = cv2.dilate(binImage, None, iterations = dilate)
         
-                
         ##Finds contours (like finding edges/sides), 'contours' is what we are after
         im2, contours, hierarchy = cv2.findContours(binImage, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_TC89_KCOS)
         
@@ -69,37 +59,45 @@ class EagleTracker:
                 cnt_area = cv2.contourArea(c)
                 hull = cv2.convexHull(c , 1)
                 hull_area = cv2.contourArea(hull)  #Used in Solidity calculation
-                p = cv2.approxPolyDP(hull, ap, 1)
-                if (cv2.isContourConvex(p) != False) and (len(p) == 4) and (cv2.contourArea(p) >= ar):
+                p = cv2.approxPolyDP(hull, approx, 1)
+                x,y,w,h = cv2.boundingRect(c)
+                aspect_ratio = float(w)/h
+                if (cv2.isContourConvex(p) != False) and (len(p) == 4) and (cv2.contourArea(p) >= area): #p=3 triangle,4 rect,>=5 circle
                     filled = cnt_area/hull_area
-                    if filled <= sl:
-                        squares.append(p)
+                    if filled <= solidity: #Used to determine if target is hollow or not
+                        if aspect_ratio >= ratio:
+                            squares.append(p)
+                        
                 else:
                     badPolys.append(p)
+       
         
         ##BoundingRectangles are just CvRectangles, so they store data as (x, y, width, height)
         ##Calculate and draw the center of the target based on the BoundingRect
         for s in squares:        
-            br = cv2.boundingRect(s)
-            #Target "x" and "y" center 
-            x = br[0] + (br[2]/2)
-            y = br[1] + (br[3]/2)
+
 
             
         for s in squares:
             if len(squares) > 0:
+                br = cv2.boundingRect(s)
+                #Target "x" and "y" center 
+                x = br[0] + (br[2]/2)
+                y = br[1] + (br[3]/2)
+                w=br[2]
+                h=br[3]
                 #Build "pixels" array to contain info desired to be sent to RoboRio
-                pixels = {"Trk" : 1, "XCntr" : x, "YCntr" : y}
+                pixels = {"Trk" : (s+1), "XCntr" : x, "YCntr" : y, "Wdth" :w, "Hght" : h}    #Notice that track includes the number of objects found
                 json_pixels = json.dumps(pixels)
                 cv2.putText(inimg, "Tracking", (3, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255),1, cv2.LINE_AA)
-                cv2.putText(inimg, str(x), (3, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255),1, cv2.LINE_AA)
-                cv2.putText(inimg, str(y), (3, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255),1, cv2.LINE_AA)
                 cv2.rectangle(inimg, (br[0],br[1]),((br[0]+br[2]),(br[1]+br[3])),(0,0,255), 2,cv2.LINE_AA)
+                jevois.sendSerial(json_pixels)
                 
         if not squares:
             pixels = {"Trk" : 0, "XCntr" : 0, "YCntr" : 0}
             json_pixels = json.dumps(pixels)
             cv2.putText(inimg, "Not Tracking", (3, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255),1, cv2.LINE_AA)
+            jevois.sendSerial(json_pixels)
             
         outimg = inimg
         
@@ -112,6 +110,6 @@ class EagleTracker:
 
         # Convert our BGR output image to video output format and send to host over USB. If your output image is not
         # BGR, you can use sendCvGRAY(), sendCvRGB(), or sendCvRGBA() as appropriate:
-        jevois.sendSerial(json_pixels)
+        
         outframe.sendCvBGR(outimg,50)
         

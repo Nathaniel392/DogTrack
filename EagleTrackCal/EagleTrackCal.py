@@ -3,18 +3,12 @@ import cv2
 import numpy as np
 
 
-upperHue = 100
-lowerHue = 0
-upperSat = 250
-lowerSat = 60
-upperVal = 255
-lowerVal = 10
-errode = 0
-dilate = 1
-approx = 6
+errode = 2
+dilate = 2
+approx = 4
 area = 500
 solidity = .2
-
+ratio = 1
 
 
 class EagleTrackCal:
@@ -33,13 +27,13 @@ class EagleTrackCal:
         inimg = inframe.getCvBGR()
         
         # Start measuring image processing time (NOTE: does not account for input conversion time): 
-        #Truely useless and can be removed
         self.timer.start()
-        #Convert the image from BGR(RGB) to HSV
-        hsvImage = cv2.cvtColor( inimg, cv2.COLOR_BGR2HSV)
-        
-        ## Threshold HSV Image to find specific color
-        binImage = cv2.inRange(hsvImage, (lowerHue, lowerSat, lowerVal), (upperHue, upperSat, upperVal))
+
+        ## Split into red, green, and blue, subtract red from the green
+        b,g,r=cv2.split(inimg)
+        binImage=g-r
+        #Otsu's is a dynamic threshold that does a good job of isolating. Not as fast as fixed
+        ret3,binImage = cv2.threshold(binImage,0,255,cv2.THRESH_OTSU)
         
         # Erode image to remove noise if necessary.
         binImage = cv2.erode(binImage, None, iterations = errode)
@@ -53,6 +47,7 @@ class EagleTrackCal:
         ##Finds contours (like finding edges/sides), 'contours' is what we are after
         im2, contours, hierarchy = cv2.findContours(binImage, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_TC89_KCOS)
         
+        
         ##arrays to will hold the good/bad polygons
         squares = []
         badPolys = []
@@ -64,10 +59,14 @@ class EagleTrackCal:
                 hull = cv2.convexHull(c , 1)
                 hull_area = cv2.contourArea(hull)  #Used in Solidity calculation
                 p = cv2.approxPolyDP(hull, approx, 1)
+                x,y,w,h = cv2.boundingRect(c)
+                aspect_ratio = float(w)/h
                 if (cv2.isContourConvex(p) != False) and (len(p) == 4) and (cv2.contourArea(p) >= area): #p=3 triangle,4 rect,>=5 circle
                     filled = cnt_area/hull_area
                     if filled <= solidity: #Used to determine if target is hollow or not
-                        squares.append(p)
+                        if aspect_ratio >= ratio:
+                            squares.append(p)
+                        
                 else:
                     badPolys.append(p)
         
@@ -96,18 +95,6 @@ class EagleTrackCal:
         #Write calibration values to a text file named "Calibration" 
         CalFile = open('Calibration', 'w')
         CalFile.truncate()#Clear out old calibraton values
-        CalFile.write(str(upperHue))
-        CalFile.write(",")
-        CalFile.write(str(lowerHue))
-        CalFile.write(",")
-        CalFile.write(str(upperSat))
-        CalFile.write(",")
-        CalFile.write(str(lowerSat))
-        CalFile.write(",")
-        CalFile.write(str(upperVal))
-        CalFile.write(",")
-        CalFile.write(str(lowerVal))
-        CalFile.write(",")
         CalFile.write(str(errode))
         CalFile.write(",")
         CalFile.write(str(dilate))
@@ -117,23 +104,20 @@ class EagleTrackCal:
         CalFile.write(str(area))
         CalFile.write(",")
         CalFile.write(str(solidity))
+        CalFile.write(",")
+        CalFile.write(str(ratio))        
         
         CalFile.close()#Close calibration file
         
     # ###################################################################################################
     ## Parse a serial command forwarded to us by the JeVois Engine, return a string
     def parseSerial(self, str):
-        global upperHue
-        global lowerHue
-        global upperSat
-        global lowerSat
-        global upperVal
-        global lowerVal
         global errode
         global dilate
         global approx
         global area
         global solidity
+        global ratio
         
         jevois.LINFO("parseserial received command [{}]".format(str))
         
@@ -141,30 +125,6 @@ class EagleTrackCal:
             return self.hello()
         
         cal = str.split("=")
-        
-        if cal[0] == "lowerHue":
-            lowerHue = int(cal[1])
-            return cal[1]
-        
-        if cal[0] == "upperHue":
-            upperHue = int(cal[1])
-            return cal[1]
-            
-        if cal[0] == "upperSat":
-            upperSat = int(cal[1])
-            return cal[1]
-            
-        if cal[0] == "lowerSat":
-            lowerSat = int(cal[1])
-            return cal[1]
-            
-        if cal[0] == "upperVal":
-            upperVal = int(cal[1])
-            return cal[1]
-            
-        if cal[0] == "lowerVal":
-            lowerVal = int(cal[1])
-            return cal[1]
             
         if cal[0] == "errode":
             errode = int(cal[1])
@@ -185,6 +145,10 @@ class EagleTrackCal:
         if cal[0] == "solidity":
             solidity = int(cal[1])/100
             return cal[1]
+
+        if cal[0] == "ratio":
+            ratio = int(cal[1])
+            return cal[1]
             
         return "ERR: Fat Fingered that command"
         
@@ -196,10 +160,7 @@ class EagleTrackCal:
         # use \n seperator if your module supports several commands
         return "Use the EagleTuner.py script on a RPi, PC, etc. to send Serial commands to tune the vision tracking."
 
-    # ###################################################################################################
-    ## Internal method that gets invoked as a custom command
-    def hello(self):
-        return "Merry Christmas from EagleForce!"
+
         
 
 
