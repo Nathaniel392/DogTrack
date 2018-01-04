@@ -58,20 +58,18 @@ class EagleTrackCal:
                 cv2.drawContours(binOut, c, -1, (255,0,0), 3)
                 cnt_area = cv2.contourArea(c)
                 hull = cv2.convexHull(c , 1)
-                hull_area = cv2.contourArea(hull)  #Used in Solidity calculation
                 p = cv2.approxPolyDP(hull, approx, 1)
                 x,y,w,h = cv2.boundingRect(c)
                 aspect_ratio = float(w)/h
                 if (cv2.isContourConvex(p) != False) and (len(p) == 4) and (cv2.contourArea(p) >= area): #p=3 triangle,4 rect,>=5 circle
                     filled = cnt_area/(w*h)
-                    if filled >= solidity: #Used to determine if target is hollow or not
+                    if filled >= solidity: 
                         if aspect_ratio >= ratio:
                             squares.append(p)
                         
                 else:
                     badPolys.append(p)
         
-
 
         for s in squares:
             if len(squares) > 0:
@@ -81,6 +79,7 @@ class EagleTrackCal:
                 #Target "x" and "y" center 
                 x = br[0] + (br[2]/2)
                 y = br[1] + (br[3]/2)
+                #Draw the rectangles on all targets we are tracking 
                 cv2.rectangle(binOut, (br[0],br[1]),((br[0]+br[2]),(br[1]+br[3])),(0,0,255), 2,cv2.LINE_AA)
 
 
@@ -154,7 +153,7 @@ class EagleTrackCal:
     ## Return a string that describes the custom commands we support, for the JeVois help message
     def supportedCommands(self):
         # use \n seperator if your module supports several commands
-        return "Use the EagleTuner.py script on a RPi, PC, etc. to send Serial commands to tune the vision tracking."
+        return "Use the DogTuner.py script on a RPi,PC, etc. to send Serial commands to tune the vision tracking."
 
 
         

@@ -2,6 +2,7 @@ import libjevois as jevois
 import cv2
 import numpy as np
 import json
+import math
 
 #Holders for target data
 pixels = [(0,0), (0,0), (0,0), (0,0)]
@@ -15,7 +16,11 @@ approx = int(CalFile[2])
 area = int(CalFile[3])
 solidity = float(CalFile[4])
 ratio = float(CalFile[5])
-
+# Paramteres used to calculate angle 
+horizontal_fov = math.radians(65)
+vertical_fov = math.radians(65*.75)   #At least as far as I can tell 
+vpw = 2.0*math.tan(horizontal_fov/2)
+vph = 2.0*math.tan(vertical_fov/2)
 
 class EagleTracker:
     # ###################################################################################################
@@ -52,28 +57,25 @@ class EagleTracker:
         ##arrays to will hold the good/bad polygons
         squares = []
         badPolys = []
-        
+   
         ## Parse through contours to find targets
         for c in contours:
             if (contours != None) and (len(contours) > 0):
+                cv2.drawContours(binOut, c, -1, (255,0,0), 3)
                 cnt_area = cv2.contourArea(c)
                 hull = cv2.convexHull(c , 1)
-                hull_area = cv2.contourArea(hull)  #Used in Solidity calculation
                 p = cv2.approxPolyDP(hull, approx, 1)
                 x,y,w,h = cv2.boundingRect(c)
                 aspect_ratio = float(w)/h
                 if (cv2.isContourConvex(p) != False) and (len(p) == 4) and (cv2.contourArea(p) >= area): #p=3 triangle,4 rect,>=5 circle
-                    filled = cnt_area/hull_area
-                    if filled <= solidity: #Used to determine if target is hollow or not
+                    filled = cnt_area/(w*h)
+                    if filled >= solidity: 
                         if aspect_ratio >= ratio:
                             squares.append(p)
                         
                 else:
                     badPolys.append(p)
-       
-        
-        ##BoundingRectangles are just CvRectangles, so they store data as (x, y, width, height)
-        ##Calculate and draw the center of the target based on the BoundingRect
+                    
 
         if len(squares) > 0:
             i=1
@@ -84,15 +86,25 @@ class EagleTracker:
                 #Target "x" and "y" center 
                 x = br[0] + (br[2]/2)
                 y = br[1] + (br[3]/2)
-                #Build "pixels" array to contain info desired to be sent to RoboRio
-                pixels['XCntr_'+str(i)]=x
-                pixels['YCntr_'+str(i)]=y    
+                #Draw a tracking rectangle on the image 
                 cv2.rectangle(inimg, (br[0],br[1]),((br[0]+br[2]),(br[1]+br[3])),(0,0,255), 2,cv2.LINE_AA)
-                i=i+1   
+                #Convert from coordinates from pixels to unit square, only valid for 320x240 resolution
+                nx = (1/160) * (x - 159.5)
+                ny = (1/120) * (119.5 - y)
+                #convert back to x and y with compensation 
+                x = vpw/2 * nx
+                y = vph/2 * ny
+                #calculate angle
+                x_angle=math.degrees(math.atan(1,x))
+                y_angle=math.degrees(math.atan(1,y))
+                #Add info for this paticular target to the dictionary 'pixels' 
+                pixels['Tx_'+str(i)]=x_angle
+                pixels['Ty_'+str(i)]=y_angle  
+                i=i+1 
                 
                 
         if not squares:
-            pixels = {"Trk" : 0, "XCntr_1" : 0, "YCntr_1" : 0}
+            pixels = {"Trk" : 0, "Tx_1" : 0, "Ty_1" : 0}
             cv2.putText(inimg, "Not Tracking", (3, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255),1, cv2.LINE_AA)
             
             
