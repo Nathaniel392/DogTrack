@@ -55,6 +55,7 @@ class EagleTrackCal:
         ## Parse through contours to find targets
         for c in contours:
             if (contours != None) and (len(contours) > 0):
+                cv2.drawContours(binOut, c, -1, (255,0,0), 3)
                 cnt_area = cv2.contourArea(c)
                 hull = cv2.convexHull(c , 1)
                 hull_area = cv2.contourArea(hull)  #Used in Solidity calculation
@@ -62,30 +63,25 @@ class EagleTrackCal:
                 x,y,w,h = cv2.boundingRect(c)
                 aspect_ratio = float(w)/h
                 if (cv2.isContourConvex(p) != False) and (len(p) == 4) and (cv2.contourArea(p) >= area): #p=3 triangle,4 rect,>=5 circle
-                    filled = cnt_area/hull_area
-                    if filled <= solidity: #Used to determine if target is hollow or not
+                    filled = cnt_area/(w*h)
+                    if filled >= solidity: #Used to determine if target is hollow or not
                         if aspect_ratio >= ratio:
                             squares.append(p)
                         
                 else:
                     badPolys.append(p)
         
-        ##BoundingRectangles are just CvRectangles, so they store data as (x, y, width, height)
-        ##Calculate and draw the center of the target based on the BoundingRect
-        for s in squares:        
-            br = cv2.boundingRect(s)
-            #Target "x" and "y" center 
-            x = br[0] + (br[2]/2)
-            y = br[1] + (br[3]/2)
 
-            
+
         for s in squares:
             if len(squares) > 0:
-                #Build "pixels" array to contain info desired to be sent to RoboRio
-
+                ##BoundingRectangles are just CvRectangles, so they store data as (x, y, width, height)
+                ##Calculate and draw the center of the target based on the BoundingRect
+                br = cv2.boundingRect(s)
+                #Target "x" and "y" center 
+                x = br[0] + (br[2]/2)
+                y = br[1] + (br[3]/2)
                 cv2.rectangle(binOut, (br[0],br[1]),((br[0]+br[2]),(br[1]+br[3])),(0,0,255), 2,cv2.LINE_AA)
-
-
 
 
         # Convert our BGR output image to video output format and send to host over USB. If your output image is not
