@@ -147,7 +147,7 @@ class EagleTrackCal:
             return cal[1]
 
         if cal[0] == "ratio":
-            ratio = int(cal[1])
+            ratio = float(cal[1])
             return cal[1]
             
         return "ERR: Fat Fingered that command"

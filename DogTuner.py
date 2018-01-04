@@ -74,7 +74,7 @@ ser = serial.Serial(serdev, 115200, timeout=1)      #Default Jevois Values
 send_command('ping')                   # should return ALIVE
 
 master = Tk()
-master.geometry('500x500')
+master.geometry('500x600')
 master.config(bg="navy")
 master.title("2085 Vision JeVois Tuner")
 
@@ -105,7 +105,7 @@ w10.config(fg="black", bg="grey", troughcolor="black", activebackground="red3")
 w10.set(solidity)
 
 w11 = Label(master, text = "Ratio", fg="white", bg="red3")
-w12 = Scale(master, from_=0, to=5, tickinterval=.25, length=600, width=16, orient=HORIZONTAL, command=update_ratio)
+w12 = Scale(master, from_=0, to=6, tickinterval=1, resolution=0.1, length=600, width=16, orient=HORIZONTAL, command=update_ratio)
 w12.config(fg="black", bg="grey", troughcolor="black", activebackground="red3")
 w12.set(ratio)
 

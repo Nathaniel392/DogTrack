@@ -74,30 +74,27 @@ class EagleTracker:
         
         ##BoundingRectangles are just CvRectangles, so they store data as (x, y, width, height)
         ##Calculate and draw the center of the target based on the BoundingRect
-        for s in squares:        
 
-
-            
-        for s in squares:
-            if len(squares) > 0:
+        if len(squares) > 0:
+            i=1
+            cv2.putText(inimg, "Tracking", (3, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255),1, cv2.LINE_AA)
+            pixels = {"Trk" : len(squares)} #Start of pixels array, values added in the loop for each contour
+            for s in squares:
                 br = cv2.boundingRect(s)
                 #Target "x" and "y" center 
                 x = br[0] + (br[2]/2)
                 y = br[1] + (br[3]/2)
-                w=br[2]
-                h=br[3]
                 #Build "pixels" array to contain info desired to be sent to RoboRio
-                pixels = {"Trk" : (s+1), "XCntr" : x, "YCntr" : y, "Wdth" :w, "Hght" : h}    #Notice that track includes the number of objects found
-                json_pixels = json.dumps(pixels)
-                cv2.putText(inimg, "Tracking", (3, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255),1, cv2.LINE_AA)
+                pixels['XCntr_'+str(i)]=x
+                pixels['YCntr_'+str(i)]=y    
                 cv2.rectangle(inimg, (br[0],br[1]),((br[0]+br[2]),(br[1]+br[3])),(0,0,255), 2,cv2.LINE_AA)
-                jevois.sendSerial(json_pixels)
+                i=i+1   
+                
                 
         if not squares:
-            pixels = {"Trk" : 0, "XCntr" : 0, "YCntr" : 0}
-            json_pixels = json.dumps(pixels)
+            pixels = {"Trk" : 0, "XCntr_1" : 0, "YCntr_1" : 0}
             cv2.putText(inimg, "Not Tracking", (3, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255),1, cv2.LINE_AA)
-            jevois.sendSerial(json_pixels)
+            
             
         outimg = inimg
         
@@ -112,4 +109,5 @@ class EagleTracker:
         # BGR, you can use sendCvGRAY(), sendCvRGB(), or sendCvRGBA() as appropriate:
         
         outframe.sendCvBGR(outimg,50)
-        
+        json_pixels = json.dumps(pixels) 
+        jevois.sendSerial(json_pixels)
