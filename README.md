@@ -1,7 +1,6 @@
 # 2085-jevois-vision-suite
 
-A fork of 2073's Jevois vision programming. The intent of this project is to provide similar functionality to the original with a slightly modified methodology. 
+A program for tracking computer vision targets in FRC. This project is a fork of 2073's Jevois vision programming. The intent of this project is to provide similar functionality to the original with a slightly modified methodology. 
 
-Rather than the traditional HSV filtering approach, this program uses the Green-Red approach outlined here https://www.chiefdelphi.com/forums/showthread.php?p=1713557#post1713557
-As outlined in the post this method allows the camera to be set with normal exposure settings and used as a driver aid when not being used for targeting. 
-To facilitate this the tuning script was modified to remove HSV options and add ratio filtering. Full instructions on how to use the programs are in the User_Guide.docx file 
+Rather than the traditional HSV filtering approach, this program uses the Green-Red approach outlined here https://www.chiefdelphi.com/forums/showthread.php?p=1713557#post1713557 as well as making changes to tuning and multiple target handling.
+As outlined in the post this method allows the camera to be set with normal exposure settings and used as a driver aid when not being used for targeting. Full description and instruction on the use of this program is avaliable in the DogTrack_User_Guide.docx
