@@ -22,7 +22,7 @@ vertical_fov = math.radians(65*.75)   #At least as far as I can tell
 vpw = 2.0*math.tan(horizontal_fov/2)
 vph = 2.0*math.tan(vertical_fov/2)
 
-class EagleTracker:
+class DogTracker:
     # ###################################################################################################
     ## Constructor
     def __init__(self):
