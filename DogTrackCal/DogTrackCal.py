@@ -11,7 +11,7 @@ solidity = .2
 ratio = 1
 
 
-class EagleTrackCal:
+class DogTrackCal:
     # ###################################################################################################
     ## Constructor
     def __init__(self):

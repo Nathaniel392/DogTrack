@@ -33,7 +33,7 @@ class EagleTracker:
     ## Process function with USB output
     def process(self, inframe, outframe):
         # Get the next camera image (may block until it is captured) and here convert it to OpenCV BGR by default. If
-        # you need a grayscale image instead, just use getCvGRAY() instead of getCvBGR(). Also supported are getCvRGB()
+        # you need a grayscale image instead, just use getCvGRaAY() instead of getCvBGR(). Also supported are getCvRGB()
         # and getCvRGBA():
         inimg = inframe.getCvBGR()
         
@@ -61,7 +61,6 @@ class EagleTracker:
         ## Parse through contours to find targets
         for c in contours:
             if (contours != None) and (len(contours) > 0):
-                cv2.drawContours(binOut, c, -1, (255,0,0), 3)
                 cnt_area = cv2.contourArea(c)
                 hull = cv2.convexHull(c , 1)
                 p = cv2.approxPolyDP(hull, approx, 1)
@@ -92,11 +91,11 @@ class EagleTracker:
                 nx = (1/160) * (x - 159.5)
                 ny = (1/120) * (119.5 - y)
                 #convert back to x and y with compensation 
-                x = vpw/2 * nx
-                y = vph/2 * ny
+                x = (vpw/2) * nx
+                y = (vph/2) * ny
                 #calculate angle
-                x_angle=math.degrees(math.atan(1,x))
-                y_angle=math.degrees(math.atan(1,y))
+                x_angle=math.degrees(math.atan2(x,1))
+                y_angle=math.degrees(math.atan2(y,1))
                 #Add info for this paticular target to the dictionary 'pixels' 
                 pixels['Tx_'+str(i)]=x_angle
                 pixels['Ty_'+str(i)]=y_angle  
